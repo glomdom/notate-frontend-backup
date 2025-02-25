@@ -138,7 +138,7 @@ export default function StudentDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {averageGrade !== null ? `${Math.round(averageGrade)}%` : "N/A"}
+              {averageGrade !== null ? `${Math.round(averageGrade)}` : "N/A"}
             </div>
             <p className="text-xs text-muted-foreground">Average score</p>
           </CardContent>

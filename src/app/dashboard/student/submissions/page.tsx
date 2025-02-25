@@ -98,7 +98,7 @@ export default function StudentSubmissionsPage() {
                   <p>
                     {submission.grade === null
                       ? "Not graded yet."
-                      : "Grade: " + submission.grade + "%"}
+                      : "Grade: " + submission.grade}
                   </p>
                   {submission.feedbackComment && submission.feedbackComment.length > 0 && (
                     <div className="mt-2">
