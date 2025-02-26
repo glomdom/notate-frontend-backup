@@ -58,7 +58,7 @@ export default function StudentSubmissionsPage() {
       {/* Course filter dropdown */}
       <div>
         <label htmlFor="courseFilter" className="mr-2 text-sm font-medium">
-          Filter by Course:
+          Filter by Subject:
         </label>
         <select
           id="courseFilter"
@@ -67,7 +67,7 @@ export default function StudentSubmissionsPage() {
           className="p-2 border rounded"
         >
           <option key="all" value="all">
-            All Courses
+            All Subjects
           </option>
           {courses.map((course, index) => (
             <option key={`course-${course}-${index}`} value={course}>
