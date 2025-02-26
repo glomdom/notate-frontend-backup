@@ -20,17 +20,14 @@ import {
 import { Input } from "@/components/ui/input";
 
 export default function TeacherDashboard() {
-  // Dashboard metrics
   const [classesCount, setClassesCount] = useState<number>(0);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [pendingAssignments, setPendingAssignments] = useState<number>(0);
   const [averageGrade, setAverageGrade] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
-  // State to control the floating "Create Assignment" dialog
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  // Form state for new assignment
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -105,7 +102,7 @@ export default function TeacherDashboard() {
       } else {
         const data = await res.json();
         setCreatedAssignment(data);
-        // Reset form fields
+
         setTitle("");
         setDescription("");
         setDueDate("");

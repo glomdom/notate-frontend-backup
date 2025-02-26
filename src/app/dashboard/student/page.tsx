@@ -81,10 +81,16 @@ export default function StudentDashboard() {
 
     const averageGrade = submittedAssignments.length > 0
       ? submittedAssignments.reduce((acc, a) => {
-        const grade = a.submissions?.[0]?.grade || 0;
+        const grade = a.submissions?.[0]?.grade;
+        if (grade === undefined) {
+          return acc;
+        }
+
         return acc + grade;
       }, 0) / submittedAssignments.length
       : null;
+
+    console.log(submittedAssignments);
 
     return {
       activeCourses,
@@ -111,7 +117,7 @@ export default function StudentDashboard() {
     },
     {
       title: "Average Grade",
-      value: dashboardMetrics.averageGrade ? `${Math.round(dashboardMetrics.averageGrade)}%` : "N/A",
+      value: dashboardMetrics.averageGrade ? `${dashboardMetrics.averageGrade}` : "N/A",
       icon: <TrendingUp className="h-4 w-4 text-muted-foreground" />,
       description: "Overall average",
     },
