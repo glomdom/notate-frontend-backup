@@ -19,8 +19,9 @@ export interface Submission {
   fileUrl: string;
   createdAt: string;
   updatedAt: string;
+  submittedAt: string;
   grade?: number;
-  courseName: string;
+  subjectName: string;
 }
 
 export interface Assignment {

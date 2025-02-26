@@ -14,14 +14,15 @@ export default function StudentSubmissionsPage() {
   useEffect(() => {
     async function fetchData() {
       const response = await api.get<Submission[]>("/api/submission/submissions/me");
-      console.log(response.data);
       if (response.error) {
         console.error("Error fetching submissions:", response.error);
       } else if (response.data) {
         setSubmissions(response.data);
       }
+
       setLoading(false);
     }
+
     fetchData();
   }, []);
 
@@ -29,11 +30,9 @@ export default function StudentSubmissionsPage() {
     try {
       const response = await api.getBlob(`/api/submission/submissions/${submissionId}/file`);
       if (response.error) throw new Error(response.error);
-
       const blob = response.data;
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
-
       link.href = url;
       link.download = `submission-${submissionId}.pdf`;
       document.body.appendChild(link);
@@ -44,17 +43,19 @@ export default function StudentSubmissionsPage() {
     }
   };
 
-  const courses = Array.from(new Set(submissions.map((sub) => sub.courseName)));
+  const courses = Array.from(new Set(submissions.map((sub) => sub.subjectName)));
   const filteredSubmissions =
     selectedCourse === "all"
       ? submissions
-      : submissions.filter((sub) => sub.courseName === selectedCourse);
+      : submissions.filter((sub) => sub.subjectName === selectedCourse);
+
+  console.log(courses);
 
   return (
     <div className="p-6 space-y-8">
       <h1 className="text-3xl font-bold">Your Submissions</h1>
 
-      {/* Course filter */}
+      {/* Course filter dropdown */}
       <div>
         <label htmlFor="courseFilter" className="mr-2 text-sm font-medium">
           Filter by Course:
@@ -62,15 +63,14 @@ export default function StudentSubmissionsPage() {
         <select
           id="courseFilter"
           value={selectedCourse}
-          key={selectedCourse}
-          onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-            setSelectedCourse(e.target.value)
-          }
+          onChange={(e: ChangeEvent<HTMLSelectElement>) => setSelectedCourse(e.target.value)}
           className="p-2 border rounded"
         >
-          <option value="all">All Courses</option>
-          {courses.map((course) => (
-            <option key={course} value={course}>
+          <option key="all" value="all">
+            All Courses
+          </option>
+          {courses.map((course, index) => (
+            <option key={`course-${course}-${index}`} value={course}>
               {course}
             </option>
           ))}
@@ -83,8 +83,8 @@ export default function StudentSubmissionsPage() {
         <p>No submissions found.</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredSubmissions.map((submission) => (
-            <Card key={submission.id} className="shadow-md rounded-lg p-4">
+          {filteredSubmissions.map((submission, index) => (
+            <Card key={submission.id || `submission-${index}`} className="shadow-md rounded-lg p-4">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold">
                   {submission.assignmentTitle}
@@ -92,8 +92,7 @@ export default function StudentSubmissionsPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-gray-600">
-                  Submitted on:{" "}
-                  {new Date(submission.submittedAt).toLocaleDateString()}
+                  Submitted on: {new Date(submission.submittedAt).toLocaleDateString()}
                 </p>
                 <p className="text-sm font-medium">
                   {submission.grade === null
@@ -106,10 +105,7 @@ export default function StudentSubmissionsPage() {
                     <p className="text-sm">{submission.feedbackComment}</p>
                   </div>
                 )}
-                <Button
-                  onClick={() => handleDownload(submission.id)}
-                  className="mt-4 w-full"
-                >
+                <Button onClick={() => handleDownload(submission.id)} className="mt-4 w-full">
                   Download Submission
                 </Button>
               </CardContent>
