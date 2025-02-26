@@ -2,83 +2,50 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { ClipboardList, LayoutDashboard, Library, Menu, Users } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { JSX, useCallback, useEffect, useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/providers/app-provider";
+import { LayoutDashboard, Users, Library, ClipboardList, Settings, FileText, Menu } from "lucide-react";
 
-interface NavItem {
-  title: string;
-  href: string;
-  icon: string;
-}
-
-const teacherNav: NavItem[] = [
-  { title: "Dashboard", href: "/dashboard/teacher", icon: "layout-dashboard" },
-  { title: "Subjects", href: "/dashboard/teacher/subjects", icon: "users" },
-  { title: "Assignments", href: "/dashboard/teacher/assignments", icon: "library" },
-  { title: "Gradebook", href: "/dashboard/teacher/gradebook", icon: "clipboard-list" },
+const teacherNav = [
+  { title: "Dashboard", href: "/dashboard/teacher", icon: <LayoutDashboard size={18} /> },
+  { title: "Subjects", href: "/dashboard/teacher/subjects", icon: <Users size={18} /> },
+  { title: "Assignments", href: "/dashboard/teacher/assignments", icon: <Library size={18} /> },
+  { title: "Gradebook", href: "/dashboard/teacher/gradebook", icon: <ClipboardList size={18} /> },
 ];
 
-const studentNav: NavItem[] = [
-  { title: "Dashboard", href: "/dashboard/student", icon: "layout-dashboard" },
-  { title: "Submissions", href: "/dashboard/student/submissions", icon: "upload" },
+const studentNav = [
+  { title: "Dashboard", href: "/dashboard/student", icon: <LayoutDashboard size={18} /> },
+  { title: "Submissions", href: "/dashboard/student/submissions", icon: <ClipboardList size={18} /> },
 ];
 
-const adminNav: NavItem[] = [
-  { title: "Dashboard", href: "/dashboard/admin", icon: "layout-dashboard" },
-  { title: "Users", href: "/dashboard/admin/users", icon: "users" },
-  { title: "System Settings", href: "/dashboard/admin/settings", icon: "settings" },
-  { title: "Reports", href: "/dashboard/admin/reports", icon: "file-text" },
+const adminNav = [
+  { title: "Dashboard", href: "/dashboard/admin", icon: <LayoutDashboard size={18} /> },
+  { title: "Users", href: "/dashboard/admin/users", icon: <Users size={18} /> },
+  { title: "Settings", href: "/dashboard/admin/settings", icon: <Settings size={18} /> },
+  { title: "Reports", href: "/dashboard/admin/reports", icon: <FileText size={18} /> },
 ];
 
-const iconMap: Record<string, JSX.Element> = {
-  "layout-dashboard": <LayoutDashboard size={18} />,
-  "users": <Users size={18} />,
-  "library": <Library size={18} />,
-  "clipboard-list": <ClipboardList size={18} />,
-};
-
-export function Sidebar({ className }: React.HTMLAttributes<HTMLDivElement>) {
+export function Sidebar() {
   const pathname = usePathname();
-  const [role, setRole] = useState<string | null>(null);
+  const { role, logout } = useAuth();
 
-  const getRoleFromToken = useCallback(() => {
-    try {
-      const token = localStorage.getItem('authToken');
-      if (!token) return null;
-
-      const payload = JSON.parse(atob(token.split('.')[1]));
-
-      return payload.role;
-    } catch (error) {
-      console.error('Error decoding token:', error);
-
-      return null;
+  const navItems = () => {
+    switch (role) {
+      case "admin": return adminNav;
+      case "teacher": return teacherNav;
+      case "student": return studentNav;
+      default: return [];
     }
-  }, []);
-
-  const navItems = useMemo(() => {
-    if (role === 'admin') return adminNav;
-    if (role === 'teacher') return teacherNav;
-    if (role === 'student') return studentNav;
-
-    return [];
-  }, [role]);
-
-  useEffect(() => {
-    const userRole = getRoleFromToken();
-    setRole(userRole);
-
-    if (!userRole) window.location.href = '/login';
-  }, [getRoleFromToken]);
+  };
 
   if (!role) return null;
 
   return (
     <>
+      {/* Mobile Sidebar */}
       <Sheet>
         <SheetTrigger asChild>
           <Button variant="outline" size="icon" className="shrink-0 md:hidden">
@@ -88,7 +55,7 @@ export function Sidebar({ className }: React.HTMLAttributes<HTMLDivElement>) {
         </SheetTrigger>
         <SheetContent side="left" className="flex flex-col">
           <nav className="grid gap-2 text-lg font-medium">
-            {navItems.map((item) => (
+            {navItems().map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -97,7 +64,7 @@ export function Sidebar({ className }: React.HTMLAttributes<HTMLDivElement>) {
                   pathname === item.href && "bg-muted text-primary"
                 )}
               >
-                {iconMap[item.icon]}
+                {item.icon}
                 <span>{item.title}</span>
               </Link>
             ))}
@@ -105,7 +72,8 @@ export function Sidebar({ className }: React.HTMLAttributes<HTMLDivElement>) {
         </SheetContent>
       </Sheet>
 
-      <div className={cn("hidden border-r bg-muted/40 md:block", className)}>
+      {/* Desktop Sidebar */}
+      <div className={cn("hidden border-r bg-muted/40 md:block")}>
         <div className="flex h-full max-h-screen flex-col gap-2">
           <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
             <Link href="/" className="flex items-center gap-2 font-semibold">
@@ -115,7 +83,7 @@ export function Sidebar({ className }: React.HTMLAttributes<HTMLDivElement>) {
 
           <ScrollArea className="flex-1">
             <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-              {navItems.map((item) => (
+              {navItems().map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
@@ -124,6 +92,7 @@ export function Sidebar({ className }: React.HTMLAttributes<HTMLDivElement>) {
                     pathname === item.href && "bg-muted text-primary"
                   )}
                 >
+                  {item.icon}
                   <span>{item.title}</span>
                 </Link>
               ))}
@@ -134,10 +103,7 @@ export function Sidebar({ className }: React.HTMLAttributes<HTMLDivElement>) {
             <Button
               variant="outline"
               className="w-full"
-              onClick={() => {
-                localStorage.removeItem('authToken');
-                window.location.href = '/login';
-              }}
+              onClick={logout}
             >
               Logout
             </Button>

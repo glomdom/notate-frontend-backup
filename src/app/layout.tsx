@@ -1,10 +1,16 @@
-import type { Metadata } from "next";
-import "./globals.css";
+"use client";
 
-export const metadata: Metadata = {
-  title: "Notate",
-  description: "The homework submission platform that just works.",
-};
+// import type { Metadata } from "next";
+import "./globals.css";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AppProvider } from "@/providers/app-provider";
+
+// export const metadata: Metadata = {
+//   title: "Notate",
+//   description: "The homework submission platform that just works.",
+// };
+
+const queryClient = new QueryClient();
 
 export default function RootLayout({
   children,
@@ -12,9 +18,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" style={{colorScheme: "dark"}} className="dark">
+    <html lang="en" style={{ colorScheme: "dark" }} className="dark">
       <body>
-        {children}
+        <QueryClientProvider client={queryClient}>
+          <AppProvider>
+            {children}
+          </AppProvider>
+        </QueryClientProvider>
       </body>
     </html>
   );

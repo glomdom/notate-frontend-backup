@@ -1,282 +1,185 @@
 "use client";
 
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Calendar, Notebook, Upload, Clock } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Assignment } from "@/lib/types";
+  Users,
+  TrendingUp,
+  Calendar,
+  AlertTriangle,
+  BookOpenCheck,
+  FileUp,
+  Clock
+} from "lucide-react";
+import { isBefore, isWithinInterval, addDays, isValid } from "date-fns";
+import { Assignment, Submission, ApiResponse } from "@/lib/types";
+import { api } from "@/lib/api-client";
+import { useToast } from "@/hooks/use-toast";
+import { AssignmentCard } from "@/components/cards/assignment-card";
+import { StatsGrid } from "@/components/sections/stats-grid";
+import { SubmissionDialog } from "@/components/dialogs/submission-dialog";
 
 export default function StudentDashboard() {
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
-  const [file, setFile] = useState<File | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(false);
 
-  const activeCoursesCount = new Set(assignments.map(a => a.subjectId)).size;
-  const activeAssignments = assignments.filter(a => !a.submissions || a.submissions.length === 0);
-  const submittedAssignments = assignments.filter(a => a.submissions && a.submissions.length > 0);
+  // Fetch assignments with proper error handling
+  const { data: assignmentsResponse } = useQuery<ApiResponse<Assignment[]>>({
+    queryKey: ["student-assignments"],
+    queryFn: () => api.get("/api/submission/student/assignments"),
+  });
 
-  const gradedSubmissions = assignments.flatMap(a =>
-    a.submissions?.filter(sub => typeof sub.grade === 'number') || []
-  );
-  const averageGrade = gradedSubmissions.length > 0
-    ? gradedSubmissions.reduce((sum, sub) => sum + (sub.grade || 0), 0) / gradedSubmissions.length
-    : null;
+  // Handle API response
+  const assignments = assignmentsResponse?.data || [];
+  const assignmentsError = assignmentsResponse?.error;
 
-  const now = new Date();
-  const upcomingCount = activeAssignments.filter(a => {
-    const dueDate = new Date(a.dueDate);
-    return dueDate > now && dueDate <= new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-  }).length;
-
-  useEffect(() => {
-    const fetchAssignments = async () => {
-      try {
-        const res = await fetch('http://localhost:4000/api/submission/student/assignments', {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('authToken')}`
-          }
-        });
-
-        if (!res.ok) throw new Error('Failed to fetch assignments');
-        const data = await res.json();
-        setAssignments(data);
-      } catch (error) {
-        console.error('Error:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAssignments();
-  }, []);
-
-  const handleSubmission = async () => {
-    if (!selectedAssignment || !file) return;
-    setIsSubmitting(true);
-    try {
+  // File submission mutation
+  const { mutate: submitAssignment, isPending: isSubmitting } = useMutation({
+    mutationFn: async ({ assignmentId, file }: { assignmentId: string; file: File }) => {
       const formData = new FormData();
-      formData.append('assignmentId', selectedAssignment.id);
-      formData.append('file', file);
+      formData.append("assignmentId", assignmentId);
+      formData.append("file", file);
 
-      const uploadResponse = await fetch('http://localhost:4000/api/submission/submissions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('authToken')}`
-        },
-        body: formData,
+      const response = await api.upload<Submission>("/api/submission/submissions", formData);
+      if (response.error) throw new Error(response.error);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["student-assignments"] });
+      setSelectedAssignment(null);
+      toast({
+        title: "✅ Submission Successful",
+        description: "Your work has been submitted successfully",
       });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "❌ Submission Failed",
+        description: error.message,
+      });
+    },
+  });
 
-      if (!uploadResponse.ok) throw new Error('Submission failed');
+  // Memoized dashboard metrics
+  const dashboardMetrics = useMemo(() => {
+    const activeCourses = new Set(assignments.map(a => a.subjectId)).size;
+    const activeAssignments = assignments.filter(a => !a.submissions?.length);
+    const submittedAssignments = assignments.filter(a => a.submissions?.length);
 
-      setAssignments(prev =>
-        prev.map(a =>
-          a.id === selectedAssignment.id
-            ? {
-              ...a,
-              submissions: [{
-                fileUrl: URL.createObjectURL(file),
-                createdAt: new Date().toISOString(),
-              }]
-            }
-            : a
-        )
+    const upcomingCount = activeAssignments.filter(a => {
+      const dueDate = new Date(a.dueDate);
+      const now = new Date();
+
+      return (
+        isValid(dueDate) &&
+        isWithinInterval(dueDate, { start: now, end: addDays(now, 7) }) &&
+        isBefore(now, dueDate)
       );
+    }).length;
 
-      setDialogOpen(false);
-      setFile(null);
-    } catch (error) {
-      console.error('Submission error:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    const averageGrade = submittedAssignments.length > 0
+      ? submittedAssignments.reduce((acc, a) => {
+        const grade = a.submissions?.[0]?.grade || 0;
+        return acc + grade;
+      }, 0) / submittedAssignments.length
+      : null;
+
+    return {
+      activeCourses,
+      activeAssignments,
+      submittedAssignments,
+      upcomingCount,
+      averageGrade,
+    };
+  }, [assignments]);
+
+  // Stats configuration
+  const stats = [
+    {
+      title: "Enrollments",
+      value: dashboardMetrics.activeCourses,
+      icon: <Users className="h-4 w-4 text-muted-foreground" />,
+      description: "Enrolled subjects",
+    },
+    {
+      title: "Pending Submissions",
+      value: dashboardMetrics.activeAssignments.length,
+      icon: <FileUp className="h-4 w-4 text-muted-foreground" />,
+      description: "Assignments due",
+    },
+    {
+      title: "Average Grade",
+      value: dashboardMetrics.averageGrade ? `${Math.round(dashboardMetrics.averageGrade)}%` : "N/A",
+      icon: <TrendingUp className="h-4 w-4 text-muted-foreground" />,
+      description: "Overall average",
+    },
+    {
+      title: "Upcoming",
+      value: dashboardMetrics.upcomingCount,
+      icon: <Calendar className="h-4 w-4 text-muted-foreground" />,
+      description: "Deadlines this week",
+    },
+  ];
+
+  // Render assignment sections
+  const renderAssignmentSection = (title: string, assignments: Assignment[], variant: "active" | "submitted" = "active") => (
+    <section className="space-y-4">
+      <h2 className="text-xl font-semibold">{title}</h2>
+      {assignmentsError ? (
+        <div className="text-destructive text-center py-6">
+          <AlertTriangle className="mx-auto h-6 w-6 mb-2" />
+          Failed to load assignments: {assignmentsError}
+        </div>
+      ) : assignments.length === 0 ? (
+        <div className="text-muted-foreground text-center py-6">
+          <BookOpenCheck className="mx-auto h-6 w-6 mb-2" />
+          {variant === "active" ? "No active assignments" : "No submissions yet"}
+        </div>
+      ) : (
+        assignments.map(assignment => {
+          const submission = assignment.submissions?.[0];
+          const isLate = submission && isValid(new Date(submission.createdAt)) && isValid(new Date(assignment.dueDate)) && isBefore(new Date(assignment.dueDate), new Date(submission.createdAt));
+
+          return (
+            <div key={assignment.id} className="relative">
+              <AssignmentCard
+                assignment={assignment}
+                variant={variant}
+                onSelect={variant === "active" ? () => setSelectedAssignment(assignment) : undefined}
+              />
+              {isLate && (
+                <div className="absolute top-4 right-4 flex items-center text-yellow-500">
+                  <Clock className="h-5 w-5 mr-1" />
+                  <span className="text-sm font-semibold">Late</span>
+                </div>
+              )}
+            </div>
+          );
+        })
+      )}
+    </section>
+  );
 
   return (
-    <div className="space-y-8 p-6">
-      <h1 className="text-3xl font-bold">Student Dashboard</h1>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Enrollments</CardTitle>
-            <Notebook className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeCoursesCount}</div>
-            <p className="text-xs text-muted-foreground">Enrolled subjects</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Pending Submissions</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeAssignments.length}</div>
-            <p className="text-xs text-muted-foreground">Assignments due</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Recent Grades</CardTitle>
-            <Upload className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {averageGrade !== null ? `${Math.round(averageGrade)}` : "N/A"}
-            </div>
-            <p className="text-xs text-muted-foreground">Average score</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Upcoming</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{upcomingCount}</div>
-            <p className="text-xs text-muted-foreground">Deadlines this week</p>
-          </CardContent>
-        </Card>
+    <div>
+      <StatsGrid stats={stats} />
+      <div className="grid py-6 gap-6 md:grid-cols-2">
+        {renderAssignmentSection("Active Assignments", dashboardMetrics.activeAssignments)}
+        {renderAssignmentSection("Latest Submitted Assignments", dashboardMetrics.submittedAssignments, "submitted")}
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="flex-1">
-          <CardHeader>
-            <CardTitle className="text-xl">Active Assignments</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="text-center py-4">Loading assignments...</div>
-            ) : activeAssignments.length > 0 ? (
-              <div className={`space-y-4 ${activeAssignments.length > 5 ? "max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400" : ""}`}>
-                {activeAssignments.map((assignment) => (
-                  <div key={assignment.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <h3 className="font-medium">{assignment.title}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Due: {new Date(assignment.dueDate).toLocaleDateString()}
-                        {new Date(assignment.dueDate) < new Date() && (
-                          <span className="text-red-500 ml-2">(Late)</span>
-                        )}
-                      </p>
-                    </div>
-
-                    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => setSelectedAssignment(assignment)}
-                        >
-                          Submit Now
-                        </Button>
-                      </DialogTrigger>
-
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>{assignment.title} Submission</DialogTitle>
-                          <DialogDescription>
-                            Due {new Date(assignment.dueDate).toLocaleDateString()}
-                          </DialogDescription>
-                        </DialogHeader>
-
-                        <div className="grid gap-4 py-4">
-                          <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="file" className="text-right">
-                              File
-                            </Label>
-                            <Input
-                              id="file"
-                              type="file"
-                              className="col-span-3"
-                              onChange={(e) => {
-                                const input = e.target as HTMLInputElement;
-                                setFile(input.files?.[0] || null);
-                              }}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              setDialogOpen(false);
-                              setFile(null);
-                            }}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            onClick={handleSubmission}
-                            disabled={!file || isSubmitting}
-                          >
-                            {isSubmitting ? 'Submitting...' : 'Submit Assignment'}
-                          </Button>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-4">No active assignments</div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Submitted Assignments */}
-        <Card className="flex-1">
-          <CardHeader>
-            <CardTitle className="text-xl">Submitted Assignments</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="text-center py-4">Loading submissions...</div>
-            ) : submittedAssignments.length > 0 ? (
-              <div className={`space-y-4 ${submittedAssignments.length > 5 ? "max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400" : ""}`}>
-                {submittedAssignments.map((assignment) => (
-                  <div key={assignment.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <h3 className="font-medium">{assignment.title}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Submitted: {assignment.submissions?.[0]?.createdAt &&
-                          new Date(assignment.submissions[0].createdAt).toLocaleDateString()}
-                      </p>
-                      {new Date(assignment.dueDate) < new Date(assignment.submissions?.[0]?.createdAt || 0) && (
-                        <p className="text-xs text-red-500 mt-1">Submitted late</p>
-                      )}
-                    </div>
-
-                    <Button variant="outline" size="sm" disabled>
-                      Submitted
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-4">No submissions yet</div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      <SubmissionDialog
+        open={!!selectedAssignment}
+        assignment={selectedAssignment}
+        onOpenChange={(open) => !open && setSelectedAssignment(null)}
+        onSubmit={(file) => {
+          if (selectedAssignment) {
+            submitAssignment({ assignmentId: selectedAssignment.id, file });
+          }
+        }}
+        isLoading={isSubmitting}
+      />
     </div>
   );
 }

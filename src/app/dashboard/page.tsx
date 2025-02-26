@@ -2,46 +2,32 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import jwt from 'jsonwebtoken';
-import { JwtPayload } from '@/lib/types';
+import { useAuth } from '@/providers/app-provider';
 
-export default function Dashboard() {
+export default function DashboardPage() {
   const router = useRouter();
+  const { role } = useAuth();
 
   useEffect(() => {
-    const token = localStorage.getItem('authToken');
-
-    if (!token) {
+    if (!role) {
       router.push('/login');
-
       return;
     }
 
-    try {
-      const decoded = jwt.decode(token) as JwtPayload;
-
-      switch (decoded?.role) {
-        case 'admin':
-          router.push('/dashboard/admin');
-          break;
-
-        case 'teacher':
-          router.push('/dashboard/teacher');
-          break;
-
-        case 'student':
-          router.push('/dashboard/student')
-          break;
-
-        default:
-          throw new Error('Invalid role');
-      }
-    } catch (error) {
-      localStorage.removeItem('authToken');
-
-      router.push('/login');
+    switch (role) {
+      case 'admin':
+        router.push('/dashboard/admin');
+        break;
+      case 'teacher':
+        router.push('/dashboard/teacher');
+        break;
+      case 'student':
+        router.push('/dashboard/student');
+        break;
+      default:
+        router.push('/login');
     }
-  }, [router]);
+  }, [role, router]);
 
   return <div className="p-8">Loading dashboard...</div>;
 }

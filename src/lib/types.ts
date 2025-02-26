@@ -1,11 +1,26 @@
+// internals
+export type ApiResponse<T> =
+  | { data: T; error?: never }
+  | { data?: never; error: string };
+
+export interface DashboardStats {
+  enrollments: number;
+  pendingSubmissions: number;
+  averageGrade: number | null;
+  upcomingDeadlines: number;
+}
+
+// database models
 export interface Submission {
   id: string;
   assignmentId: string;
   assignmentTitle: string;
   feedbackComment: string;
   fileUrl: string;
-  submittedAt: string;
+  createdAt: string;
+  updatedAt: string;
   grade?: number;
+  courseName: string;
 }
 
 export interface Assignment {
