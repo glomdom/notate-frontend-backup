@@ -2,10 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { BookOpen, Users, Plus} from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { BookOpen, Users } from "lucide-react";
 import { Subject } from "@/lib/types";
-import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function TeacherSubjectsPage() {
