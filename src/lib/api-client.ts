@@ -42,7 +42,7 @@ async function apiClient<T>(
 async function getBlobClient(
   endpoint: string,
   options: RequestInit = {}
-): Promise<ApiResponse<Blob>> {
+): Promise<ApiResponse<{ blob: Blob; fileName: string }>> {
   const headers = new Headers(options.headers);
   const token = localStorage.getItem("authToken");
   if (token) {
@@ -53,13 +53,25 @@ async function getBlobClient(
     const response = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
     if (!response.ok) {
       const errorData = await response.json();
+
       return { error: errorData.error || `HTTP error! status: ${response.status}` };
     }
-    const data = await response.blob();
-    return { data };
+
+    const blob = await response.blob();
+    const contentDisposition = response.headers.get("Content-Disposition");
+
+    let fileName = "submission-fallback.pdf"; // falblack
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename\*?=(?:UTF-8'')?"?([^;\r\n"]+)/i);
+      if (match && match[1]) {
+        fileName = match[1];
+      }
+    }
+
+    return { data: { blob, fileName } };
   } catch (error) {
     return {
-      error: error instanceof Error ? error.message : "Unknown error occurred"
+      error: error instanceof Error ? error.message : "Unknown error occurred",
     };
   }
 }

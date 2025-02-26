@@ -14,6 +14,8 @@ export default function DashboardPage() {
       return;
     }
 
+    console.log(role);
+
     switch (role) {
       case 'admin':
         router.push('/dashboard/admin');

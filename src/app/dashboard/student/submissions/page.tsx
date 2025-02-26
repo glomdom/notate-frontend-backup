@@ -19,10 +19,8 @@ export default function StudentSubmissionsPage() {
       } else if (response.data) {
         setSubmissions(response.data);
       }
-
       setLoading(false);
     }
-
     fetchData();
   }, []);
 
@@ -30,11 +28,11 @@ export default function StudentSubmissionsPage() {
     try {
       const response = await api.getBlob(`/api/submission/submissions/${submissionId}/file`);
       if (response.error) throw new Error(response.error);
-      const blob = response.data;
+      const { blob, fileName } = response.data;
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `submission-${submissionId}.pdf`;
+      link.download = fileName;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -49,8 +47,6 @@ export default function StudentSubmissionsPage() {
       ? submissions
       : submissions.filter((sub) => sub.subjectName === selectedCourse);
 
-  console.log(courses);
-
   return (
     <div className="p-6 space-y-8">
       <h1 className="text-3xl font-bold">Your Submissions</h1>
@@ -58,7 +54,7 @@ export default function StudentSubmissionsPage() {
       {/* Course filter dropdown */}
       <div>
         <label htmlFor="courseFilter" className="mr-2 text-sm font-medium">
-          Filter by Subject:
+          Filter by Course:
         </label>
         <select
           id="courseFilter"
@@ -67,7 +63,7 @@ export default function StudentSubmissionsPage() {
           className="p-2 border rounded"
         >
           <option key="all" value="all">
-            All Subjects
+            All Courses
           </option>
           {courses.map((course, index) => (
             <option key={`course-${course}-${index}`} value={course}>
