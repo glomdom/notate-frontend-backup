@@ -145,7 +145,12 @@ export default function GradebookPage() {
   ) => {
     setGradeInputs((prev) => ({
       ...prev,
-      [submissionId]: { grade: "", comment: "", ...prev[submissionId], [field]: value },
+      [submissionId]: {
+        ...prev[submissionId],
+        grade: prev[submissionId]?.grade ?? "",
+        comment: prev[submissionId]?.comment ?? "",
+        [field]: value
+      },
     }));
   };
 
