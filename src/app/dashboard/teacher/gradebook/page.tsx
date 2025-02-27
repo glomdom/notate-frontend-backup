@@ -186,9 +186,8 @@ export default function GradebookPage() {
               return (
                 <Card
                   key={assignment.id}
-                  className={`cursor-pointer border p-4 hover:shadow-lg ${
-                    selectedAssignment?.id === assignment.id ? "bg-muted/20" : ""
-                  }`}
+                  className={`cursor-pointer border p-4 hover:shadow-lg ${selectedAssignment?.id === assignment.id ? "bg-muted/20" : ""
+                    }`}
                   onClick={() => setSelectedAssignment(assignment)}
                 >
                   <div className="flex flex-col space-y-2">
@@ -288,11 +287,20 @@ export default function GradebookPage() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() =>
-                                  window.open(
-                                    `http://localhost:4000/api/submission/submissions/${submission.id}/file`,
-                                    "_blank"
-                                  )
+                                onClick={async () => {
+                                  const response = await api.getBlob(`/api/submission/submissions/${submission.id}/file`);
+                                  if (response.error) throw new Error(response.error);
+
+                                  const { blob, fileName } = response.data!;
+                                  const url = window.URL.createObjectURL(blob);
+                                  const link = document.createElement("a");
+
+                                  link.href = url;
+                                  link.download = fileName;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  link.remove();
+                                }
                                 }
                               >
                                 Download

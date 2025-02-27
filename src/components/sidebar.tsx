@@ -23,7 +23,7 @@ const studentNav = [
 
 const adminNav = [
   { title: "Dashboard", href: "/dashboard/admin", icon: <LayoutDashboard size={18} /> },
-  { title: "Classes", href: "/dashboard/admin/classes", icon: <GraduationCap size={18} /> },
+  { title: "Curriculum", href: "/dashboard/admin/curriculum", icon: <GraduationCap size={18} /> },
   { title: "Users", href: "/dashboard/admin/users", icon: <Users size={18} /> },
 ];
 

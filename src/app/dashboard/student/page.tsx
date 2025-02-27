@@ -24,17 +24,14 @@ export default function StudentDashboard() {
   const queryClient = useQueryClient();
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
 
-  // Fetch assignments with proper error handling
   const { data: assignmentsResponse } = useQuery<ApiResponse<Assignment[]>>({
     queryKey: ["student-assignments"],
     queryFn: () => api.get("/api/submission/student/assignments"),
   });
 
-  // Handle API response
   const assignments = assignmentsResponse?.data || [];
   const assignmentsError = assignmentsResponse?.error;
 
-  // File submission mutation
   const { mutate: submitAssignment, isPending: isSubmitting } = useMutation({
     mutationFn: async ({ assignmentId, file }: { assignmentId: string; file: File }) => {
       const formData = new FormData();
@@ -62,7 +59,6 @@ export default function StudentDashboard() {
     },
   });
 
-  // Memoized dashboard metrics
   const dashboardMetrics = useMemo(() => {
     const activeCourses = new Set(assignments.map(a => a.subjectId)).size;
     const activeAssignments = assignments.filter(a => !a.submissions?.length);
@@ -101,7 +97,6 @@ export default function StudentDashboard() {
     };
   }, [assignments]);
 
-  // Stats configuration
   const stats = [
     {
       title: "Enrollments",
@@ -129,7 +124,6 @@ export default function StudentDashboard() {
     },
   ];
 
-  // Render assignment sections
   const renderAssignmentSection = (title: string, assignments: Assignment[], variant: "active" | "submitted" = "active") => (
     <section className="space-y-4">
       <h2 className="text-xl font-semibold">{title}</h2>
