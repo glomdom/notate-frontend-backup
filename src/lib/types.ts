@@ -38,7 +38,10 @@ export interface Assignment {
   title: string;
   dueDate: string;
   subjectId: string;
+  description: string;
   submissions?: Submission[];
+  submissionsCount: number;
+  ungradedCount: number;
 }
 
 export interface Subject {

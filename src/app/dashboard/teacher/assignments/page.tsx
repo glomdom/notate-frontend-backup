@@ -10,28 +10,15 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { CalendarDays, Pencil } from "lucide-react";
-
-type Assignment = {
-  id: string;
-  title: string;
-  description?: string;
-  dueDate: string;
-  subjectId: string;
-  submissionsCount: number;
-  ungradedCount: number;
-};
-
-type Subject = {
-  id: string;
-  name: string;
-};
+import { CalendarDays, Pencil, PlusCircle } from "lucide-react";
+import { Assignment, Subject } from "@/lib/types";
 
 export default function TeacherAssignmentsPage() {
   const queryClient = useQueryClient();
@@ -43,6 +30,14 @@ export default function TeacherAssignmentsPage() {
     dueDate: "",
   });
   const [selectedSubject, setSelectedSubject] = useState("all");
+
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createFormData, setCreateFormData] = useState({
+    title: "",
+    description: "",
+    dueDate: "",
+    subjectId: "",
+  });
 
   const { data: assignmentsData, isLoading: assignmentsLoading } = useQuery<Assignment[]>({
     queryKey: ["teacherAssignments"],
@@ -73,6 +68,7 @@ export default function TeacherAssignmentsPage() {
       selectedSubject === "all" ? true : assignment.subjectId === selectedSubject
     ) || [];
 
+  // Mutation to update an assignment (for editing)
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
       const payload = { ...data, dueDate: new Date(data.dueDate).toISOString() };
@@ -81,14 +77,13 @@ export default function TeacherAssignmentsPage() {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
         const errorData = await res.json();
-
         throw new Error(errorData.error || "Failed to update assignment");
       }
 
@@ -124,9 +119,133 @@ export default function TeacherAssignmentsPage() {
     }
   };
 
+  // Mutation to create a new assignment
+  const createMutation = useMutation({
+    mutationFn: async (newAssignment: typeof createFormData) => {
+      const token = localStorage.getItem("authToken");
+      const res = await fetch("http://localhost:4000/api/submission/assignments/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ...newAssignment,
+          dueDate: new Date(newAssignment.dueDate).toISOString(),
+        }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to create assignment");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Assignment created successfully!" });
+      queryClient.invalidateQueries({ queryKey: ["teacherAssignments"] });
+      setCreateDialogOpen(false);
+      setCreateFormData({
+        title: "",
+        description: "",
+        dueDate: "",
+        subjectId: "",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Creation failed",
+        description: error.message,
+      });
+    },
+  });
+
+  const handleCreateSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    createMutation.mutate(createFormData);
+  };
+
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-3xl font-bold">Your Assignments</h1>
+      {/* Header with Create Assignment Button */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Your Assignments</h1>
+        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button variant="default">
+              <PlusCircle size={18} className="mr-2" />
+              Create Assignment
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create New Assignment</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleCreateSubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="create-title">Title</Label>
+                <Input
+                  id="create-title"
+                  value={createFormData.title}
+                  onChange={(e) =>
+                    setCreateFormData({ ...createFormData, title: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="create-description">Description</Label>
+                <Input
+                  id="create-description"
+                  value={createFormData.description}
+                  onChange={(e) =>
+                    setCreateFormData({ ...createFormData, description: e.target.value })
+                  }
+                />
+              </div>
+              <div>
+                <Label htmlFor="create-dueDate">Due Date</Label>
+                <Input
+                  id="create-dueDate"
+                  type="datetime-local"
+                  value={createFormData.dueDate}
+                  onChange={(e) =>
+                    setCreateFormData({ ...createFormData, dueDate: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="create-subject">Subject</Label><br></br>
+                <select
+                  id="create-subject"
+                  value={createFormData.subjectId}
+                  onChange={(e) =>
+                    setCreateFormData({ ...createFormData, subjectId: e.target.value })
+                  }
+                  required
+                  className="p-2 border rounded"
+                >
+                  <option value="">Select a subject</option>
+                  {subjectsData?.map((subject) => (
+                    <option key={subject.id} value={subject.id}>
+                      {subject.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={createMutation.isPending}>
+                  {createMutation.isPending ? "Creating..." : "Create Assignment"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
 
       {/* Subject Filter */}
       <div className="flex items-center space-x-4">
@@ -156,10 +275,7 @@ export default function TeacherAssignmentsPage() {
           {filteredAssignments.map((assignment) => {
             const subjectName = subjectsMap.get(assignment.subjectId) || "Unknown Subject";
             return (
-              <Card
-                key={assignment.id}
-                className="hover:shadow-lg transition-shadow group border-border"
-              >
+              <Card key={assignment.id} className="hover:shadow-lg transition-shadow group border-border">
                 <CardHeader className="flex flex-row justify-between items-start p-4 pb-2">
                   <div className="space-y-3 flex-1">
                     <div className="flex items-center gap-3">
@@ -203,10 +319,11 @@ export default function TeacherAssignmentsPage() {
                       </p>
                     </div>
                     <div
-                      className={`border p-3 rounded-lg ${assignment.ungradedCount > 0
-                        ? "border-destructive/20 bg-destructive/10"
-                        : "border-success/20 bg-success/10"
-                        }`}
+                      className={`border p-3 rounded-lg ${
+                        assignment.ungradedCount > 0
+                          ? "border-destructive/20 bg-destructive/10"
+                          : "border-success/20 bg-success/10"
+                      }`}
                     >
                       <h4 className="text-xs font-medium text-muted-foreground mb-1">
                         Ungraded
