@@ -7,7 +7,17 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/app-provider";
-import { LayoutDashboard, Users, Library, ClipboardList, Menu, GraduationCap } from "lucide-react";
+import {
+  LayoutDashboard,
+  Users,
+  Library,
+  ClipboardList,
+  Menu,
+  GraduationCap,
+  User
+} from "lucide-react";
+
+import ProfileDialog from "@/components/dialogs/profile-dialog";
 
 const teacherNav = [
   { title: "Dashboard", href: "/dashboard/teacher", icon: <LayoutDashboard size={18} /> },
@@ -68,6 +78,13 @@ export function Sidebar() {
               </Link>
             ))}
           </nav>
+          <div className="mt-auto p-4 space-y-4">
+            {/* Replace the link with your ProfileDialog trigger */}
+            <ProfileDialog />
+            <Button variant="outline" className="w-full" onClick={logout}>
+              Logout
+            </Button>
+          </div>
         </SheetContent>
       </Sheet>
 
@@ -76,7 +93,7 @@ export function Sidebar() {
         <div className="flex h-full max-h-screen flex-col gap-2">
           <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
             <Link href="/" className="flex items-center gap-2 font-semibold">
-              <span className="">Notate</span>
+              <span>Notate</span>
             </Link>
           </div>
 
@@ -98,12 +115,9 @@ export function Sidebar() {
             </nav>
           </ScrollArea>
 
-          <div className="mt-auto p-4">
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={logout}
-            >
+          <div className="mt-auto p-4 space-y-4">
+            <ProfileDialog />
+            <Button variant="outline" className="w-full" onClick={logout}>
               Logout
             </Button>
           </div>

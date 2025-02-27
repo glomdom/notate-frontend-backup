@@ -57,8 +57,6 @@ export default function TeacherDashboard() {
 
           const submissionData = await submissionResponse.json();
 
-          
-
           submissionData.forEach(submission => {
             if (submission.grade) {
               setSumOfGrades(prev => prev + submission.grade);
