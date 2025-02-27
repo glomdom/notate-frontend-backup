@@ -2,9 +2,25 @@
 
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
-import { Trash, PlusCircle } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import { Trash, PlusCircle, Edit } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+
+function sortUsers(usersArray: any[]) {
+  return [...usersArray].sort((a, b) => {
+    const fullNameA = `${a.firstName} ${a.lastName}`.toLowerCase();
+    const fullNameB = `${b.firstName} ${b.lastName}`.toLowerCase();
+
+    return fullNameA.localeCompare(fullNameB);
+  });
+}
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<any[]>([]);
@@ -17,6 +33,12 @@ export default function AdminUsersPage() {
   const [newEmail, setNewEmail] = useState("");
   const [newRole, setNewRole] = useState("student");
 
+  const [editingDialogOpen, setEditingDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<any | null>(null);
+  const [editingFirstName, setEditingFirstName] = useState("");
+  const [editingLastName, setEditingLastName] = useState("");
+  const [editingEmail, setEditingEmail] = useState("");
+
   useEffect(() => {
     async function fetchUsers() {
       try {
@@ -28,7 +50,7 @@ export default function AdminUsersPage() {
         if (!res.ok) throw new Error("Failed to fetch users");
 
         const data = await res.json();
-        setUsers(data);
+        setUsers(sortUsers(data));
       } catch (error) {
         console.error("Error fetching users:", error);
       } finally {
@@ -53,13 +75,14 @@ export default function AdminUsersPage() {
 
       if (!res.ok) {
         const errorData = await res.json();
-
         throw new Error(errorData.error || "Failed to update user role");
       }
 
       setUsers((prevUsers) =>
-        prevUsers.map((user) =>
-          user.id === userId ? { ...user, role: newRole } : user
+        sortUsers(
+          prevUsers.map((user) =>
+            user.id === userId ? { ...user, role: newRole } : user
+          )
         )
       );
     } catch (error) {
@@ -79,17 +102,15 @@ export default function AdminUsersPage() {
 
       if (!res.ok) {
         const errorData = await res.json();
-
         throw new Error(errorData.error || "Failed to delete user");
       }
 
-      setUsers((prevUsers) => prevUsers.filter((user) => user.id !== userId));
+      setUsers((prevUsers) => sortUsers(prevUsers.filter((user) => user.id !== userId)));
     } catch (error) {
       console.error("Error deleting user:", error);
     }
   };
 
-  // Create a new user
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -111,13 +132,20 @@ export default function AdminUsersPage() {
 
       if (!res.ok) {
         const errorData = await res.json();
-
         throw new Error(errorData.error || "Failed to create user");
       }
 
       const createdUser = await res.json();
-      setUsers((prevUsers) => [...prevUsers, createdUser]);
 
+      // Ensure the new user has an id; if not, use a fallback based on email and timestamp.
+      const newUser = {
+        ...createdUser,
+        id: createdUser.id || `${createdUser.email}-${Date.now()}`,
+      };
+
+      setUsers((prevUsers) => sortUsers([...prevUsers, newUser]));
+
+      // Clear input fields and close the dialog
       setNewFirstName("");
       setNewLastName("");
       setNewEmail("");
@@ -128,7 +156,45 @@ export default function AdminUsersPage() {
     }
   };
 
-  // Filter users by search query (case-insensitive)
+  const handleEditUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      const authToken = localStorage.getItem("authToken");
+      const res = await fetch("http://localhost:4000/api/auth/user", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          id: editingUser.id,
+          firstName: editingFirstName,
+          lastName: editingLastName,
+          email: editingEmail,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to update user");
+      }
+
+      const updatedUser = await res.json();
+      setUsers((prevUsers) =>
+        sortUsers(
+          prevUsers.map((user) =>
+            user.id === updatedUser.id ? updatedUser : user
+          )
+        )
+      );
+      setEditingDialogOpen(false);
+    } catch (error) {
+      console.error("Error editing user:", error);
+    }
+  };
+
+  // Filter (and since we're already sorting on each update, using this list directly is fine)
   const filteredUsers = users.filter((user) => {
     const fullName = `${user.firstName} ${user.lastName}`.toLowerCase();
     return fullName.includes(searchQuery.toLowerCase());
@@ -230,8 +296,8 @@ export default function AdminUsersPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredUsers.map((user) => (
-              <tr key={user.id} className="border-b">
+            {filteredUsers.map((user, index) => (
+              <tr key={user.id || `${user.email}-${index}`} className="border-b">
                 <td className="p-2">
                   {user.firstName} {user.lastName}
                 </td>
@@ -247,7 +313,20 @@ export default function AdminUsersPage() {
                     <option value="admin">Admin</option>
                   </select>
                 </td>
-                <td className="p-2">
+                <td className="p-2 flex gap-2">
+                  <button
+                    onClick={() => {
+                      setEditingUser(user);
+                      setEditingFirstName(user.firstName);
+                      setEditingLastName(user.lastName);
+                      setEditingEmail(user.email);
+                      setEditingDialogOpen(true);
+                    }}
+                    className="flex items-center gap-1 bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded"
+                  >
+                    <Edit className="h-4 w-4" />
+                    Edit
+                  </button>
                   <button
                     onClick={() => handleDeleteUser(user.id)}
                     className="flex items-center gap-1 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
@@ -261,6 +340,55 @@ export default function AdminUsersPage() {
           </tbody>
         </table>
       )}
+
+      {/* Edit User Dialog */}
+      <Dialog open={editingDialogOpen} onOpenChange={setEditingDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit User</DialogTitle>
+            <DialogDescription>
+              Modify the user details.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditUser} className="space-y-4 mt-4">
+            <div>
+              <label className="block text-sm font-medium">First Name</label>
+              <Input
+                type="text"
+                value={editingFirstName}
+                onChange={(e) => setEditingFirstName(e.target.value)}
+                required
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium">Last Name</label>
+              <Input
+                type="text"
+                value={editingLastName}
+                onChange={(e) => setEditingLastName(e.target.value)}
+                required
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium">Email</label>
+              <Input
+                type="email"
+                value={editingEmail}
+                onChange={(e) => setEditingEmail(e.target.value)}
+                required
+                className="mt-1"
+              />
+            </div>
+            <div className="flex justify-end">
+              <Button type="submit" className="bg-blue-500 hover:bg-blue-600 text-white">
+                Save Changes
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
