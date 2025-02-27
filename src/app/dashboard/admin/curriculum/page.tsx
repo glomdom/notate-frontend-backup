@@ -126,7 +126,7 @@ export default function AdminClassesPage() {
       const res = await fetch("http://localhost:4000/api/class/subjects", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
-        body: JSON.stringify({ name: newSubjectName }),
+        body: JSON.stringify({ name: newSubjectName, teacherIds: [] }),
       });
 
       if (!res.ok) throw new Error("Failed to create subject");
