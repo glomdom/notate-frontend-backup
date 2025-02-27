@@ -8,13 +8,15 @@ import { useQueryClient } from "@tanstack/react-query";
 type AuthContextType = {
   user: JwtPayload | null;
   role: string | null;
+  isLoading: boolean;
   logout: () => void;
 };
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   role: null,
-  logout: () => {},
+  isLoading: true,
+  logout: () => { },
 });
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
@@ -22,12 +24,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     user: JwtPayload | null;
     role: string | null;
   }>({ user: null, role: null });
+  const [isLoading, setIsLoading] = useState(true);
   const queryClient = useQueryClient();
 
   useEffect(() => {
     const verifyAuth = () => {
       const token = localStorage.getItem("authToken");
-      if (!token) return;
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
 
       try {
         const decoded = jwtDecode<JwtPayload>(token);
@@ -37,12 +43,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         });
       } catch {
         logout();
+      } finally {
+        setIsLoading(false);
       }
     };
 
     verifyAuth();
     window.addEventListener("storage", verifyAuth);
-
     return () => window.removeEventListener("storage", verifyAuth);
   }, []);
 
@@ -57,6 +64,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider value={{
       user: authState.user,
       role: authState.role,
+      isLoading,
       logout
     }}>
       {children}

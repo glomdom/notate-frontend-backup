@@ -6,17 +6,16 @@ import { useAuth } from '@/providers/app-provider';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { role } = useAuth();
+  const { user, loading } = useAuth();
 
   useEffect(() => {
-    if (!role) {
+    if (!loading && !user?.role) {
+      console.log(user);
       router.push('/login');
       return;
     }
 
-    console.log(role);
-
-    switch (role) {
+    switch (user?.role) {
       case 'admin':
         router.push('/dashboard/admin');
         break;
@@ -29,7 +28,7 @@ export default function DashboardPage() {
       default:
         router.push('/login');
     }
-  }, [role, router]);
+  }, [loading, user?.role, router]);
 
   return <div className="p-8">Loading dashboard...</div>;
 }

@@ -10,6 +10,14 @@ export interface DashboardStats {
   upcomingDeadlines: number;
 }
 
+export interface UserData {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+}
+
 // database models
 export interface Submission {
   id: string;

@@ -30,10 +30,10 @@ const adminNav = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { role, logout } = useAuth();
+  const { user, logout } = useAuth();
 
   const navItems = () => {
-    switch (role) {
+    switch (user?.role) {
       case "admin": return adminNav;
       case "teacher": return teacherNav;
       case "student": return studentNav;
@@ -41,7 +41,7 @@ export function Sidebar() {
     }
   };
 
-  if (!role) return null;
+  if (!user?.role) return null;
 
   return (
     <>

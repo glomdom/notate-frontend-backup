@@ -2,41 +2,21 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { jwtDecode } from "jwt-decode";
-import { JwtPayload } from "@/lib/types";
+import { useAuth } from "@/providers/app-provider";
 
-export const ProtectedRoute = ({
-  children,
-  allowedRoles,
-}: {
-  children: React.ReactNode;
-  allowedRoles?: string[];
-}) => {
+export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    const verifyAuth = () => {
-      const token = localStorage.getItem("authToken");
-      if (!token) return router.push("/login");
+    if (!loading && !user) {
+      router.push("/login");
+    }
+  }, [loading, user, router]);
 
-      try {
-        const decoded = jwtDecode<JwtPayload>(token);
-
-        if (allowedRoles && !allowedRoles.includes(decoded.role)) {
-          router.push("/dashboard");
-        }
-      } catch {
-        localStorage.removeItem("authToken");
-
-        router.push("/login");
-      }
-    };
-
-    verifyAuth();
-    window.addEventListener("storage", verifyAuth);
-
-    return () => window.removeEventListener("storage", verifyAuth);
-  }, [router, allowedRoles]);
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return <>{children}</>;
 };
