@@ -1,0 +1,73 @@
+services:
+  postgres:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: compsci
+      POSTGRES_DB: notatedb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+
+  auth-service:
+    container_name: auth-service
+    image: glomdom/auth-service:latest
+    ports:
+      - "4001:4001"
+    depends_on:
+      - postgres
+    environment:
+      - DATABASE_URL=postgresql://admin:compsci@postgres:5432/notatedb?schema=auth
+      - GMAIL_USER=notate.demo@gmail.com
+      - GMAIL_PASSWORD=hkjwhfykhmkomvda
+
+  class-service:
+    container_name: class-service
+    image: glomdom/class-service:latest
+    ports:
+      - "4002:4002"
+    depends_on:
+      - postgres
+    environment:
+      - DATABASE_URL=postgresql://admin:compsci@postgres:5432/notatedb?schema=class
+
+  api-gateway:
+    container_name: api-gateway
+    image: glomdom/api-gateway:latest
+    # build: ./api-gateway/
+    ports:
+      - "4000:4000"
+    depends_on:
+      - auth-service
+      - class-service
+      - submission-service
+    stop_signal: SIGTERM
+    stop_grace_period: 1s
+
+  submission-service:
+    container_name: submission-service
+    image: glomdom/submission-service:latest
+    ports:
+      - "4003:4003"
+    depends_on:
+      - postgres
+    environment:
+      - DATABASE_URL=postgresql://admin:compsci@postgres:5432/notatedb?schema=submission
+    stop_signal: SIGTERM
+    stop_grace_period: 1s
+
+volumes:
+  postgres_data:

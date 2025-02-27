@@ -14,6 +14,8 @@ export default function TeacherDashboard() {
   const [subjects, setSubjects] = useState<any[]>([]);
   const [pendingAssignments, setPendingAssignments] = useState<number>(0);
   const [averageGrade, setAverageGrade] = useState<number>(0);
+  const [sumOfGrades, setSumOfGrades] = useState<number>(0);
+  const [totalGrades, setTotalGrades] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,9 +46,26 @@ export default function TeacherDashboard() {
         setSubjects(subjectsData);
         setPendingAssignments(totalUngraded);
 
-        console.log(assignmentsData);
 
-        setAverageGrade(87);
+        assignmentsData.forEach(async (assignment) => {
+          const assignmentId = assignment.id;
+          const submissionResponse = await fetch(`http://localhost:4000/api/submission/submissions/for-assignment/${assignmentId}`, { headers: { Authorization: `Bearer ${authToken}` } });
+
+          if (!submissionResponse.ok) {
+            throw new Error("Failed to fetch data");
+          }
+
+          const submissionData = await submissionResponse.json();
+
+          
+
+          submissionData.forEach(submission => {
+            if (submission.grade) {
+              setSumOfGrades(prev => prev + submission.grade);
+              setTotalGrades(prev => prev + 1);
+            }
+          })
+        });
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -55,6 +74,12 @@ export default function TeacherDashboard() {
     }
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (totalGrades > 0) {
+      setAverageGrade(sumOfGrades / totalGrades);
+    }
+  }, [sumOfGrades, totalGrades]);
 
   return (
     <div className="flex h-screen">
@@ -112,7 +137,7 @@ export default function TeacherDashboard() {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{averageGrade}</div>
+                <div className="text-2xl font-bold">{String(averageGrade)}</div>
                 <p className="text-xs text-muted-foreground">Overall grade average</p>
               </CardContent>
             </Card>
