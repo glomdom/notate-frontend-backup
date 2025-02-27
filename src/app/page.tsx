@@ -21,12 +21,12 @@ export default function Home() {
           {
             icon: CheckCircle,
             title: "Submit Work",
-            desc: "Upload assignments before deadlines with confirmation"
+            desc: "Upload assignments before deadlines with confirmation."
           },
           {
             icon: FileText,
             title: "Receive Feedback",
-            desc: "Get grades and comments from instructors"
+            desc: "Get grades and comments from instructors."
           },
           {
             icon: ClipboardList,
