@@ -161,14 +161,13 @@ export default function AdminUsersPage() {
 
     try {
       const authToken = localStorage.getItem("authToken");
-      const res = await fetch("http://localhost:4000/api/auth/users", {
+      const res = await fetch(`http://localhost:4000/api/auth/users/${editingUser.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify({
-          id: editingUser.id,
           firstName: editingFirstName,
           lastName: editingLastName,
           email: editingEmail,
