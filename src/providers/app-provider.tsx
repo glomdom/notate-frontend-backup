@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { jwtDecode } from "jwt-decode";
 import { JwtPayload } from "@/lib/types";
 import { useQueryClient } from "@tanstack/react-query";
@@ -10,6 +10,7 @@ type AuthContextType = {
   role: string | null;
   isLoading: boolean;
   logout: () => void;
+  refreshAuth: () => void;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -17,55 +18,62 @@ const AuthContext = createContext<AuthContextType>({
   role: null,
   isLoading: true,
   logout: () => { },
+  refreshAuth: () => { },
 });
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [authState, setAuthState] = useState<{
-    user: JwtPayload | null;
-    role: string | null;
-  }>({ user: null, role: null });
+  const [authState, setAuthState] = useState<{ user: JwtPayload | null; role: string | null; }>({
+    user: null,
+    role: null,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const verifyAuth = () => {
-      const token = localStorage.getItem("authToken");
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        const decoded = jwtDecode<JwtPayload>(token);
-        setAuthState({
-          user: decoded,
-          role: decoded.role,
-        });
-      } catch {
-        logout();
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    verifyAuth();
-    window.addEventListener("storage", verifyAuth);
-    return () => window.removeEventListener("storage", verifyAuth);
-  }, []);
-
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem("authToken");
     setAuthState({ user: null, role: null });
     queryClient.clear();
     window.location.href = "/login";
-  };
+  }, [queryClient]);
+
+  const refreshAuth = useCallback(() => {
+    const token = localStorage.getItem("authToken");
+    console.log("refreshAuth token:", token);
+
+    if (!token) {
+      setIsLoading(false);
+
+      return;
+    }
+
+    try {
+      const decoded = jwtDecode<JwtPayload>(token);
+      setAuthState({
+        user: decoded,
+        role: decoded.role,
+      });
+    } catch (error) {
+      console.error("Error decoding token:", error);
+      logout();
+    } finally {
+      setIsLoading(false);
+    }
+  }, [logout]);
+
+  useEffect(() => {
+    // Run on mount
+    refreshAuth();
+    window.addEventListener("storage", refreshAuth);
+    return () => window.removeEventListener("storage", refreshAuth);
+  }, [refreshAuth]);
 
   return (
     <AuthContext.Provider value={{
       user: authState.user,
       role: authState.role,
       isLoading,
-      logout
+      logout,
+      refreshAuth,
     }}>
       {children}
     </AuthContext.Provider>

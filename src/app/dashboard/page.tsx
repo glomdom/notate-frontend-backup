@@ -3,19 +3,23 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/providers/app-provider';
+import { jwtDecode } from 'jwt-decode';
+import { JwtPayload } from '@/lib/types';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { role, isLoading } = useAuth();
 
   useEffect(() => {
-    if (!loading && !user?.role) {
-      console.log(user);
+    if (isLoading) return;
+    const token = jwtDecode<JwtPayload>(localStorage.getItem("authToken")!);
+
+    if (!token.role) {
       router.push('/login');
       return;
     }
 
-    switch (user?.role) {
+    switch (token.role) {
       case 'admin':
         router.push('/dashboard/admin');
         break;
@@ -28,7 +32,7 @@ export default function DashboardPage() {
       default:
         router.push('/login');
     }
-  }, [loading, user?.role, router]);
+  }, [role, isLoading, router]);
 
   return <div className="p-8">Loading dashboard...</div>;
 }

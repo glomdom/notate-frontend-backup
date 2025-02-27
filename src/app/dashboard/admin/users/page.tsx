@@ -1,6 +1,6 @@
 "use client";
 
-export default function DashboardAdminPage() {
+export default function AdminUsersPage() {
   return (
     <div></div>
   );

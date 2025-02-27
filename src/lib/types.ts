@@ -63,7 +63,7 @@ export interface SubjectAssignment {
   updatedAt: Date;
 }
 
-export interface JwtPayload {
+export type JwtPayload = {
   role: string;
   id: string;
 }

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/app-provider";
-import { LayoutDashboard, Users, Library, ClipboardList, Settings, FileText, Menu } from "lucide-react";
+import { LayoutDashboard, Users, Library, ClipboardList, Menu, GraduationCap } from "lucide-react";
 
 const teacherNav = [
   { title: "Dashboard", href: "/dashboard/teacher", icon: <LayoutDashboard size={18} /> },
@@ -23,9 +23,8 @@ const studentNav = [
 
 const adminNav = [
   { title: "Dashboard", href: "/dashboard/admin", icon: <LayoutDashboard size={18} /> },
+  { title: "Classes", href: "/dashboard/admin/classes", icon: <GraduationCap size={18} /> },
   { title: "Users", href: "/dashboard/admin/users", icon: <Users size={18} /> },
-  { title: "Settings", href: "/dashboard/admin/settings", icon: <Settings size={18} /> },
-  { title: "Reports", href: "/dashboard/admin/reports", icon: <FileText size={18} /> },
 ];
 
 export function Sidebar() {

@@ -6,12 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useAuth } from '@/providers/app-provider';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { logout, refreshAuth } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -20,7 +22,7 @@ export default function LoginPage() {
 
       return () => clearTimeout(timer);
     }
-  }, [error, email, password]);
+  }, [error, logout, email, password]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,8 +42,12 @@ export default function LoginPage() {
         throw new Error(data.error || 'Login failed. Check credentials.');
       }
 
+      console.log("setting token: ", data.token);
       localStorage.setItem('authToken', data.token);
-      router.push('/dashboard');
+
+      refreshAuth();
+
+      router.push("/dashboard");
     } catch (err: any) {
       setError(err.message || 'Connection failed. Try again later.');
     } finally {
