@@ -161,7 +161,7 @@ export default function AdminUsersPage() {
 
     try {
       const authToken = localStorage.getItem("authToken");
-      const res = await fetch("http://localhost:4000/api/auth/user", {
+      const res = await fetch("http://localhost:4000/api/auth/users", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
